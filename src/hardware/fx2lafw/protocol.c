@@ -123,11 +123,12 @@ static int command_start_acquisition(const struct sr_dev_inst *sdi)
 	       (cmd.flags & CMD_START_FLAGS_CLK_192MHZ? "192" :
 		(cmd.flags & CMD_START_FLAGS_CLK_48MHZ) ? "48" : "30"));
 
-	if (delay == 0 && samplerate == SR_MHZ(192) &&
-		(cmd.flags & CMD_START_FLAGS_CLK_192MHZ)) {
-		/* Delay == 0 is ok in this case... */
-	}
-	else if (delay <= 0 || delay > MAX_SAMPLE_DELAY) {
+//	if (delay == 0 && samplerate == SR_MHZ(192) &&
+//		(cmd.flags & CMD_START_FLAGS_CLK_192MHZ)) {
+//		/* Delay == 0 is ok in this case... */
+//	}
+//	else if (delay <= 0 || delay > MAX_SAMPLE_DELAY) {
+	if (delay <= 0 || delay > MAX_SAMPLE_DELAY) {
 		sr_err("Unable to sample at %" PRIu64 "Hz.", samplerate);
 		return SR_ERR;
 	}
@@ -194,9 +195,22 @@ SR_PRIV int fx2lafw_dev_open(struct sr_dev_inst *sdi, struct sr_dev_driver *di)
 			if (usb_get_port_path(devlist[i], connection_id, sizeof(connection_id)) < 0)
 				continue;
 
-			if (strcmp(sdi->connection_id, connection_id))
+//			if (strcmp(sdi->connection_id, connection_id))
+//				/* This is not the one. */
+//				continue;
+			char const * _sdi_connection_id = sdi->connection_id;
+			char const * _connection_id = connection_id;
+
+			if (devc->profile->dev_caps & DEV_CAPS_FX3) {
+				_sdi_connection_id = strchr(_sdi_connection_id, '-');
+				_connection_id = strchr(connection_id, '-');
+			}
+
+			if (strcmp(_sdi_connection_id, _connection_id)) {
 				/* This is not the one. */
+				sr_info("Connection mismatch: %s vs. %s", sdi->connection_id, connection_id);
 				continue;
+			}
 		}
 
 		if (!(ret = libusb_open(devlist[i], &usb->devhdl))) {
