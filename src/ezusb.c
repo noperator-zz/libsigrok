@@ -143,45 +143,56 @@ SR_PRIV int ezusb_upload_firmware(struct sr_context *ctx, libusb_device *dev,
 {
 	struct libusb_device_handle *hdl;
 	int ret;
+	int result;
 
 	sr_info("uploading firmware to device on %d.%d",
 		libusb_get_bus_number(dev), libusb_get_device_address(dev));
 
-	if ((ret = libusb_open(dev, &hdl)) < 0) {
-		sr_err("failed to open device: %s.", libusb_error_name(ret));
-		return SR_ERR;
-	}
+	hdl = NULL;
+	result = SR_ERR;
+	while (result == SR_ERR) {
+		if ((ret = libusb_open(dev, &hdl)) < 0) {
+			sr_err("failed to open device: %s.", libusb_error_name(ret));
+			break;
+		}
 
 /*
  * The libusb Darwin backend is broken: it can report a kernel driver being
  * active, but detaching it always returns an error.
  */
 #if !defined(__APPLE__)
-	if (libusb_kernel_driver_active(hdl, 0) == 1) {
-		if ((ret = libusb_detach_kernel_driver(hdl, 0)) < 0) {
-			sr_err("failed to detach kernel driver: %s",
-					libusb_error_name(ret));
-			return SR_ERR;
+		if (libusb_kernel_driver_active(hdl, 0) == 1) {
+			if ((ret = libusb_detach_kernel_driver(hdl, 0)) < 0) {
+				sr_err("failed to detach kernel driver: %s",
+					   libusb_error_name(ret));
+				break;
+			}
 		}
-	}
 #endif
 
-	if ((ret = libusb_set_configuration(hdl, configuration)) < 0) {
-		sr_err("Unable to set configuration: %s",
-				libusb_error_name(ret));
-		return SR_ERR;
+		if ((ret = libusb_set_configuration(hdl, configuration)) < 0) {
+			sr_err("Unable to set configuration: %s",
+				   libusb_error_name(ret));
+			break;
+		}
+
+		if (!fx3 && (ezusb_reset(hdl, 1)) < 0) {
+			break;
+		}
+
+		if (ezusb_install_firmware(ctx, hdl, name, fx3) < 0) {
+			break;
+		}
+
+		if (!fx3 && (ezusb_reset(hdl, 0)) < 0) {
+			break;
+		}
+
+		result = SR_OK;
 	}
 
-	if (!fx3 && (ezusb_reset(hdl, 1)) < 0)
-		return SR_ERR;
+	if (hdl)
+		libusb_close(hdl);
 
-	if (ezusb_install_firmware(ctx, hdl, name, fx3) < 0)
-		return SR_ERR;
-
-	if (!fx3 && (ezusb_reset(hdl, 0)) < 0)
-		return SR_ERR;
-
-	libusb_close(hdl);
-
-	return SR_OK;
+	return result;
 }
