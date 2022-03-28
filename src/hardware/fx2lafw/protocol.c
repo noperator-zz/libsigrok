@@ -212,7 +212,9 @@ SR_PRIV int fx2lafw_dev_open(struct sr_dev_inst *sdi, struct sr_dev_driver *di)
 				continue;
 			}
 		}
-
+		// TODO there may be multiple devices in the  list with identical VID/PID/path, but only one of them is the
+		//  correct one. (device 01 with VID:PID 04b4:00f3: 09 04 04, device 09 with VID:PID 04b4:00f3: 09 04 04)
+		//  api.c keeps trying until it can open one; should do the same thing here
 		if (!(ret = libusb_open(devlist[i], &usb->devhdl))) {
 			if (usb->address == 0xff)
 				/*

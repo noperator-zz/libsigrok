@@ -20,6 +20,7 @@
 #include <config.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -85,6 +86,9 @@ static int zip_create(const struct sr_output *o)
 	guint logic_channels, enabled_logic_channels;
 	guint enabled_analog_channels;
 	guint index;
+//	uint8_t highest_enabled_logic_channel;
+	uint8_t unitsize;
+	int p;
 
 	outc = o->priv;
 
@@ -121,13 +125,22 @@ static int zip_create(const struct sr_output *o)
 	logic_channels = 0;
 	enabled_logic_channels = 0;
 	enabled_analog_channels = 0;
-	for (l = o->sdi->channels; l; l = l->next) {
+	unitsize = 0;
+//	highest_enabled_logic_channel = 0;
+	for (l = o->sdi->channels, p = 0; l; l = l->next, p++) {
 		ch = l->data;
 
 		switch (ch->type) {
 		case SR_CHANNEL_LOGIC:
-			if (ch->enabled)
+			if (ch->enabled) {
 				enabled_logic_channels++;
+				assert(ch->index == p);
+				// TODO assumes channels are sorted in ascending order here
+				unitsize = (ch->index / 8) + 1;
+//				unitsize = (highest_enabled_logic_channel + 8) / 8;
+//				highest_enabled_logic_channel = ch->index > highest_enabled_logic_channel ? ch->index : highest_enabled_logic_channel;
+//				channel_mask |= 1 << p;
+			}
 			logic_channels++;
 			break;
 		case SR_CHANNEL_ANALOG:
@@ -204,9 +217,10 @@ static int zip_create(const struct sr_output *o)
 	 * during execution. This simplifies other locations.
 	 */
 	alloc_size = CHUNK_SIZE;
-	outc->logic_buff.zip_unit_size = logic_channels;
-	outc->logic_buff.zip_unit_size += 8 - 1;
-	outc->logic_buff.zip_unit_size /= 8;
+	outc->logic_buff.zip_unit_size = unitsize;
+//	outc->logic_buff.zip_unit_size = logic_channels;
+//	outc->logic_buff.zip_unit_size += 8 - 1;
+//	outc->logic_buff.zip_unit_size /= 8;
 	outc->logic_buff.samples = g_try_malloc0(alloc_size);
 	if (!outc->logic_buff.samples)
 		return SR_ERR_MALLOC;

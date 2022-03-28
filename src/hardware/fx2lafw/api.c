@@ -221,6 +221,9 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 	size_t ch_max, ch_idx;
 	const char *channel_name;
 
+	uint8_t port_numbers[10];
+	int num_ports;
+
 	drvc = di->context;
 
 	conn = NULL;
@@ -263,6 +266,11 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 
 		if (!is_plausible(&des))
 			continue;
+
+		num_ports = libusb_get_port_numbers(devlist[i], port_numbers, 10);
+		sr_warn("port numbers for device %02X with VID:PID %04x:%04x: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+				i, des.idVendor, des.idProduct, port_numbers[0], port_numbers[1], port_numbers[2], port_numbers[3], port_numbers[4],
+				port_numbers[5], port_numbers[6], port_numbers[7], port_numbers[8], port_numbers[9]);
 
 		if ((ret = libusb_open(devlist[i], &hdl)) < 0) {
 			sr_warn("Failed to open potential device with "
