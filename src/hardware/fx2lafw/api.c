@@ -149,7 +149,7 @@ static const int32_t trigger_matches[] = {
 	SR_TRIGGER_EDGE,
 };
 
-static const uint64_t samplerates[] = {
+static const uint64_t fx2_samplerates[] = {
 	SR_KHZ(20),
 	SR_KHZ(25),
 	SR_KHZ(50),
@@ -166,13 +166,23 @@ static const uint64_t samplerates[] = {
 	SR_MHZ(12),
 	SR_MHZ(16),
 	SR_MHZ(24),
-	/* FX3 only rates below here */
+};
+
+static const uint64_t fx3_samplerates[] = {
+	SR_MHZ(1),
+	SR_MHZ(2),
+	SR_MHZ(3),
+	SR_MHZ(4),
+	SR_MHZ(6),
+	SR_MHZ(8),
+	SR_MHZ(12),
+	SR_MHZ(16),
+	SR_MHZ(24),
 	SR_MHZ(32),
 	SR_MHZ(48),
 	SR_MHZ(64),
 	SR_MHZ(96),
 	SR_MHZ(192),
-#define NUM_FX3_RATES 5
 };
 
 static const char *channel_names_logic[] = {
@@ -391,10 +401,8 @@ static GSList *scan(struct sr_dev_driver *di, GSList *options)
 			cg->channels = g_slist_append(NULL, ch);
 		}
 
-		devc->samplerates = samplerates;
-		devc->num_samplerates = ARRAY_SIZE(samplerates);
-		if (!(prof->dev_caps & DEV_CAPS_FX3))
-			devc->num_samplerates -= NUM_FX3_RATES;
+		devc->samplerates = (prof->dev_caps & DEV_CAPS_FX3) ? fx3_samplerates : fx2_samplerates;
+		devc->num_samplerates = (prof->dev_caps & DEV_CAPS_FX3) ? ARRAY_SIZE(fx3_samplerates) : ARRAY_SIZE(fx2_samplerates);
 		has_firmware = usb_match_manuf_prod(devlist[i],
 				"sigrok", "fx2lafw");
 
